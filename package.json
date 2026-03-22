@@ -16,7 +16,8 @@
     "lint:fix": "vp lint --fix",
     "fmt": "vp fmt",
     "fmt:check": "vp fmt --check",
-    "check": "vp check"
+    "check": "vp check",
+    "prepare": "vp config"
   },
   "devDependencies": {
     "vite-plus": "^0.1.13"

@@ -1,1 +1,0 @@
-../../../src/skills/slack-project-notify/SKILL.md

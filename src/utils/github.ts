@@ -72,7 +72,11 @@ export function createGitHubClient(gh: GhCommandRunner = createGhCommandRunner()
     const args = ["api", "graphql", "-f", `query=${query}`];
     if (variables) {
       for (const [key, value] of Object.entries(variables)) {
-        args.push("-F", `${key}=${JSON.stringify(value)}`);
+        if (typeof value === "string") {
+          args.push("-f", `${key}=${value}`);
+        } else {
+          args.push("-F", `${key}=${JSON.stringify(value)}`);
+        }
       }
     }
 
@@ -80,107 +84,67 @@ export function createGitHubClient(gh: GhCommandRunner = createGhCommandRunner()
   }
 
   async function getProjectMetadata(project: ProjectRef): Promise<ProjectMetadata> {
-    const query = `
-      query($owner: String!, $number: Int!) {
-        organization(login: $owner) {
-          projectV2(number: $number) {
-            id
-            title
-            fields(first: 50) {
-              nodes {
-                ... on ProjectV2FieldCommon {
-                  id
-                  name
-                  dataType
-                }
-                ... on ProjectV2SingleSelectField {
-                  options {
-                    id
-                    name
-                  }
-                }
-              }
-            }
-          }
-        }
-        user(login: $owner) {
-          projectV2(number: $number) {
-            id
-            title
-            fields(first: 50) {
-              nodes {
-                ... on ProjectV2FieldCommon {
-                  id
-                  name
-                  dataType
-                }
-                ... on ProjectV2SingleSelectField {
-                  options {
-                    id
-                    name
-                  }
-                }
-              }
-            }
-          }
+    type ProjectNode = {
+      id: string;
+      title: string;
+      fields: {
+        nodes: Array<{
+          id?: string;
+          name?: string;
+          dataType?: string;
+          options?: Array<{ id: string; name: string }>;
+        } | null>;
+      };
+    };
+
+    type GraphqlResponse = {
+      data?: {
+        user?: { projectV2?: ProjectNode };
+        organization?: { projectV2?: ProjectNode };
+      };
+    };
+
+    const fieldsFragment = `
+      id
+      title
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2FieldCommon { id name dataType }
+          ... on ProjectV2SingleSelectField { options { id name } }
         }
       }
     `;
 
-    type GraphqlResponse = {
-      data?: {
-        organization?: {
-          projectV2?: {
-            id: string;
-            title: string;
-            fields: {
-              nodes: Array<{
-                id?: string;
-                name?: string;
-                dataType?: string;
-                options?: Array<{ id: string; name: string }>;
-              } | null>;
-            };
-          };
-        };
-        user?: {
-          projectV2?: {
-            id: string;
-            title: string;
-            fields: {
-              nodes: Array<{
-                id?: string;
-                name?: string;
-                dataType?: string;
-                options?: Array<{ id: string; name: string }>;
-              } | null>;
-            };
-          };
-        };
-      };
-    };
+    for (const ownerType of ["user", "organization"] as const) {
+      const query = `
+        query($owner: String!, $number: Int!) {
+          ${ownerType}(login: $owner) {
+            projectV2(number: $number) { ${fieldsFragment} }
+          }
+        }
+      `;
 
-    const response = await ghGraphql<GraphqlResponse>(query, {
-      owner: project.owner,
-      number: project.projectNumber,
-    });
-    const projectNode = response.data?.organization?.projectV2 ?? response.data?.user?.projectV2;
-    if (!projectNode) {
-      throw new Error(`Project ${project.owner}#${project.projectNumber} was not found.`);
+      try {
+        const response = await ghGraphql<GraphqlResponse>(query, {
+          owner: project.owner,
+          number: project.projectNumber,
+        });
+        const node = response.data?.user?.projectV2 ?? response.data?.organization?.projectV2;
+        if (node) {
+          return {
+            id: node.id,
+            title: node.title,
+            fields: node.fields.nodes
+              .filter((f): f is NonNullable<typeof f> => Boolean(f?.id && f.name && f.dataType))
+              .map((f) => ({ id: f.id!, name: f.name!, dataType: f.dataType!, options: f.options ?? [] })),
+          };
+        }
+      } catch {
+        // try next owner type
+      }
     }
 
-    return {
-      id: projectNode.id,
-      title: projectNode.title,
-      fields: projectNode.fields.nodes
-        .filter((field): field is NonNullable<typeof field> => Boolean(field?.id && field.name && field.dataType))
-        .map((field) => ({
-          id: field.id!,
-          name: field.name!,
-          dataType: field.dataType!,
-          options: field.options ?? [],
-        })),
-    };
+    throw new Error(`Project ${project.owner}#${project.projectNumber} was not found.`);
   }
 
   async function listLabels(repo: RepoRef): Promise<string[]> {

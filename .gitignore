@@ -35,3 +35,8 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # Finder (MacOS) folder config
 .DS_Store
+
+.agents/memory
+
+# vite-plus hook shims (regenerated); keep .vite-hooks/pre-commit in repo
+.vite-hooks/_

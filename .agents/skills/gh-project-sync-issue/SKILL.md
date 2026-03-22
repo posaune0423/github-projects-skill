@@ -1,1 +1,0 @@
-../../../src/skills/gh-project-sync-issue/SKILL.md

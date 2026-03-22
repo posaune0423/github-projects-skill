@@ -1,1 +1,0 @@
-../../../src/skills/gh-project-setup/SKILL.md
