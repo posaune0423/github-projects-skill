@@ -1,0 +1,47 @@
+name: Weekly Project Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 0 * * 1"
+
+jobs:
+  weekly-report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      repository-projects: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Generate weekly report
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || github.token }}
+          GITHUB_OWNER: ${{ vars.GITHUB_OWNER }}
+          GITHUB_REPO: ${{ vars.GITHUB_REPO }}
+          GITHUB_PROJECT_NUMBER: ${{ vars.GITHUB_PROJECT_NUMBER }}
+          GITHUB_PROJECT_DATE_FIELD: ${{ vars.GITHUB_PROJECT_DATE_FIELD }}
+          GITHUB_PROJECT_STATUS_FIELD: ${{ vars.GITHUB_PROJECT_STATUS_FIELD }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          bun run weekly-report > weekly-report.md
+          cat weekly-report.md >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${SLACK_WEBHOOK_URL}" ]; then
+            bun run weekly-report --notify-slack > /dev/null
+          else
+            echo "SLACK_WEBHOOK_URL is not configured; Slack notify skipped." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weekly-project-report
+          path: weekly-report.md

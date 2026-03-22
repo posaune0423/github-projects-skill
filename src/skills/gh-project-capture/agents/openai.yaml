@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Capture"
+  short_description: "Capture text into labeled GitHub issues"
+  default_prompt: "Use $gh-project-capture to turn this request into a GitHub issue."

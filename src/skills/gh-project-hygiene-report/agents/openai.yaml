@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Hygiene Report"
+  short_description: "Generate deterministic hygiene issue reports"
+  default_prompt: "Use $gh-project-hygiene-report to generate the project hygiene report."

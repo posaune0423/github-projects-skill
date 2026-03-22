@@ -1,0 +1,4 @@
+interface:
+  display_name: "Slack Project Notify"
+  short_description: "Send project updates to Slack webhooks"
+  default_prompt: "Use $slack-project-notify to send this project update to Slack."

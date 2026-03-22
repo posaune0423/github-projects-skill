@@ -1,0 +1,1 @@
+../../../src/skills/gh-project-capture/SKILL.md

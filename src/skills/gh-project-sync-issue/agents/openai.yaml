@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Sync Issue"
+  short_description: "Reclassify and sync an existing issue"
+  default_prompt: "Use $gh-project-sync-issue to resync this issue with project metadata."

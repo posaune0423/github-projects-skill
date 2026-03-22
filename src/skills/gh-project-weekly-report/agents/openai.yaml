@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Weekly Report"
+  short_description: "Generate deterministic weekly project reports"
+  default_prompt: "Use $gh-project-weekly-report to generate the weekly GitHub Projects report."

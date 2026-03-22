@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Setup"
+  short_description: "Create and align GitHub project fields"
+  default_prompt: "Use $gh-project-setup to prepare a GitHub Project for this repo."

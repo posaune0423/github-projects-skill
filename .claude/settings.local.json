@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bunx vp:*)",
+      "Bash(vp --version)",
+      "Bash(vp add:*)",
+      "Bash(vp lint:*)",
+      "Bash(vp fmt:*)",
+      "Bash(vp remove:*)"
+    ]
+  }
+}
