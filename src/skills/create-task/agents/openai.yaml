@@ -1,0 +1,4 @@
+interface:
+  display_name: "Create Task"
+  short_description: "Create a tracked GitHub task from a request"
+  default_prompt: "Use $create-task to turn this request into a GitHub task."

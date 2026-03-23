@@ -125,6 +125,8 @@ export type GitHubProjectsSkillOptions = RepoRef &
     projectDateFieldName?: string;
     projectStatusFieldName?: string;
     projectTitle?: string;
+    projectTemplateOwner?: string;
+    projectTemplateNumber?: number;
     slackWebhookUrl?: string;
   };
 

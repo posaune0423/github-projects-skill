@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Create Task"
+  short_description: "Create a project task from freeform text"
+  default_prompt: "Use $gh-project-create-task to create a GitHub task from this request."

@@ -4,13 +4,15 @@ import { createGitHubProjectsSkill } from "../src/skills/github-projects-ops/ind
 import type { GitHubClient } from "../src/utils/github.ts";
 import type { IntakeClassification, IssueIntakeClassifier, ProjectField } from "../src/utils/types.ts";
 
-function createGithubMock(): {
+function createGithubMock(options?: { failInitialProjectLookup?: boolean }): {
   github: GitHubClient;
   calls: {
+    copyProject: Array<unknown>;
     createIssue: Array<unknown>;
     editIssue: Array<unknown>;
     ensureMilestone: Array<unknown>;
     ensureLabels: Array<unknown>;
+    linkProject: Array<unknown>;
     setProjectFieldValue: Array<unknown>;
   };
 } {
@@ -34,19 +36,40 @@ function createGithubMock(): {
   };
 
   const calls = {
+    copyProject: [] as Array<unknown>,
     createIssue: [] as Array<unknown>,
     editIssue: [] as Array<unknown>,
     ensureMilestone: [] as Array<unknown>,
     ensureLabels: [] as Array<unknown>,
+    linkProject: [] as Array<unknown>,
     setProjectFieldValue: [] as Array<unknown>,
   };
 
+  let projectMetadataCalls = 0;
   const github: GitHubClient = {
-    getProjectMetadata: mock(async () => ({
-      id: "project-id",
-      title: "Roadmap",
-      fields: [dueDateField, statusField, priorityField],
-    })),
+    getProjectMetadata: mock(async () => {
+      projectMetadataCalls += 1;
+      if (options?.failInitialProjectLookup && projectMetadataCalls === 1) {
+        throw new Error("Project not found");
+      }
+
+      return {
+        id: "project-id",
+        title: "Roadmap",
+        fields: [dueDateField, statusField, priorityField],
+      };
+    }),
+    copyProject: mock(async (...args: unknown[]) => {
+      calls.copyProject.push(args);
+      return {
+        id: "project-id",
+        number: 7,
+        title: "Roadmap",
+      };
+    }),
+    linkProject: mock(async (...args: unknown[]) => {
+      calls.linkProject.push(args);
+    }),
     listLabels: mock(async () => ["bug"]),
     ensureLabels: mock(async (...args: unknown[]) => {
       calls.ensureLabels.push(args);
@@ -123,6 +146,30 @@ const classifier: IssueIntakeClassifier = {
 };
 
 describe("createGitHubProjectsSkill", () => {
+  test("creates a project from template during setup when project is missing", async () => {
+    const { github, calls } = createGithubMock({ failInitialProjectLookup: true });
+    const skill = createGitHubProjectsSkill(
+      {
+        owner: "acme",
+        repo: "app",
+        projectNumber: 0,
+        projectTemplateNumber: 3,
+        projectTemplateOwner: "acme-org",
+        projectTitle: "app project",
+      },
+      {
+        github,
+      },
+    );
+
+    const result = await skill.setupProject();
+
+    expect(result.projectNumber).toBe(7);
+    expect(result.createdFromTemplate).toBe(true);
+    expect(calls.copyProject.length).toBe(1);
+    expect(calls.linkProject.length).toBe(1);
+  });
+
   test("captures an issue and sets project metadata", async () => {
     const { github, calls } = createGithubMock();
     const skill = createGitHubProjectsSkill(

@@ -1,5 +1,5 @@
 import { createGitHubProjectsSkill } from "./src/skills/github-projects-ops/index.ts";
-import { readClassifier, readSkillOptions } from "./src/utils/config.ts";
+import { readClassifier, readSetupSkillOptions, readSkillOptions } from "./src/utils/config.ts";
 
 type ParsedArgs = {
   command?: string;
@@ -51,6 +51,8 @@ async function readInputText(flags: Record<string, string | boolean | undefined>
 function printUsage(): void {
   console.log(`Usage:
   bun run index.ts setup-project --owner ORG --repo REPO --project-number 1
+  bun run index.ts setup-project --owner ORG --repo REPO --project-template-number 12 --project-title "Repo project"
+  bun run index.ts create-task --provider heuristic --input "text"
   bun run index.ts capture --provider heuristic --input "text"
   bun run index.ts sync-issue --provider heuristic --issue 123
   bun run index.ts weekly-report [--notify-slack]
@@ -73,6 +75,26 @@ async function main(): Promise<void> {
     return;
   }
 
+  if (parsed.command === "setup-project") {
+    const options = readSetupSkillOptions(parsed.flags);
+    const skill = createGitHubProjectsSkill(options);
+    const result = await skill.setupProject();
+    console.log(
+      JSON.stringify(
+        {
+          message: result.createdFromTemplate
+            ? "Project created from template and ensured."
+            : "Project fields ensured.",
+          projectNumber: result.projectNumber,
+          createdFromTemplate: result.createdFromTemplate,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
   const options = readSkillOptions(parsed.flags);
   const classifier = readClassifier(parsed.flags);
   const skill = createGitHubProjectsSkill(options, {
@@ -80,11 +102,7 @@ async function main(): Promise<void> {
   });
 
   switch (parsed.command) {
-    case "setup-project": {
-      await skill.setupProject();
-      console.log("Project fields ensured.");
-      return;
-    }
+    case "create-task":
     case "capture": {
       const text = await readInputText(parsed.flags);
       const result = await skill.captureIssueFromText(text);

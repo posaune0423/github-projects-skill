@@ -9,15 +9,29 @@ function required(name: string, value: string | undefined): string {
   return value;
 }
 
-export function readSkillOptions(flags: Record<string, string | boolean | undefined>): GitHubProjectsSkillOptions {
+export function readSetupSkillOptions(flags: Record<string, string | boolean | undefined>): GitHubProjectsSkillOptions {
   const owner = typeof flags.owner === "string" ? flags.owner : process.env.GITHUB_OWNER;
   const repo = typeof flags.repo === "string" ? flags.repo : process.env.GITHUB_REPO;
   const projectNumberValue =
     typeof flags["project-number"] === "string" ? flags["project-number"] : process.env.GITHUB_PROJECT_NUMBER;
+  const projectTemplateNumberValue =
+    typeof flags["project-template-number"] === "string"
+      ? flags["project-template-number"]
+      : process.env.GITHUB_PROJECT_TEMPLATE_NUMBER;
+  const projectTemplateOwner =
+    typeof flags["project-template-owner"] === "string"
+      ? flags["project-template-owner"]
+      : process.env.GITHUB_PROJECT_TEMPLATE_OWNER;
+  const projectTitle =
+    typeof flags["project-title"] === "string" ? flags["project-title"] : process.env.GITHUB_PROJECT_TITLE;
 
-  const projectNumber = Number(required("GITHUB_PROJECT_NUMBER", projectNumberValue));
+  const projectNumber = projectNumberValue ? Number(projectNumberValue) : 0;
   if (!Number.isFinite(projectNumber)) {
     throw new Error("GITHUB_PROJECT_NUMBER must be numeric.");
+  }
+  const projectTemplateNumber = projectTemplateNumberValue ? Number(projectTemplateNumberValue) : undefined;
+  if (projectTemplateNumberValue && !Number.isFinite(projectTemplateNumber)) {
+    throw new Error("GITHUB_PROJECT_TEMPLATE_NUMBER must be numeric.");
   }
 
   const projectDateFieldName =
@@ -33,8 +47,20 @@ export function readSkillOptions(flags: Record<string, string | boolean | undefi
     projectNumber,
     projectDateFieldName,
     projectStatusFieldName,
+    projectTemplateOwner,
+    projectTemplateNumber,
+    projectTitle,
     slackWebhookUrl,
   };
+}
+
+export function readSkillOptions(flags: Record<string, string | boolean | undefined>): GitHubProjectsSkillOptions {
+  const options = readSetupSkillOptions(flags);
+  if (options.projectNumber <= 0) {
+    throw new Error("GITHUB_PROJECT_NUMBER is required.");
+  }
+
+  return options;
 }
 
 export function readClassifier(flags: Record<string, string | boolean | undefined>): IssueIntakeClassifier | undefined {

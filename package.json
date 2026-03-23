@@ -4,6 +4,7 @@
   "type": "module",
   "module": "index.ts",
   "scripts": {
+    "create-task": "bun run index.ts create-task",
     "capture": "bun run index.ts capture",
     "sync-issue": "bun run index.ts sync-issue",
     "weekly-report": "bun run index.ts weekly-report",
@@ -20,6 +21,7 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@types/bun": "latest",
     "vite-plus": "^0.1.13"
   },
   "peerDependencies": {

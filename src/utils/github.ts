@@ -147,6 +147,52 @@ export function createGitHubClient(gh: GhCommandRunner = createGhCommandRunner()
     throw new Error(`Project ${project.owner}#${project.projectNumber} was not found.`);
   }
 
+  async function copyProject(input: {
+    sourceOwner: string;
+    targetOwner: string;
+    projectNumber: number;
+    title: string;
+    drafts?: boolean;
+  }): Promise<{ id: string; number: number; title: string }> {
+    type ProjectCopyResponse = {
+      id: string;
+      number: number;
+      title: string;
+    };
+
+    const args = [
+      "project",
+      "copy",
+      String(input.projectNumber),
+      "--source-owner",
+      input.sourceOwner,
+      "--target-owner",
+      input.targetOwner,
+      "--title",
+      input.title,
+      "--format",
+      "json",
+    ];
+
+    if (input.drafts) {
+      args.push("--drafts");
+    }
+
+    return runJson<ProjectCopyResponse>(args);
+  }
+
+  async function linkProject(project: ProjectRef, repo: RepoRef): Promise<void> {
+    await run([
+      "project",
+      "link",
+      String(project.projectNumber),
+      "--owner",
+      project.owner,
+      "--repo",
+      `${repo.owner}/${repo.repo}`,
+    ]);
+  }
+
   async function listLabels(repo: RepoRef): Promise<string[]> {
     type Label = { name: string };
     const labels = await ghApi<Label[]>(`repos/${repo.owner}/${repo.repo}/labels?per_page=100`);
@@ -651,6 +697,8 @@ export function createGitHubClient(gh: GhCommandRunner = createGhCommandRunner()
 
   return {
     getProjectMetadata,
+    copyProject,
+    linkProject,
     listLabels,
     ensureLabels,
     listMilestones,

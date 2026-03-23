@@ -33,6 +33,14 @@ function defaultProjectStatusFieldName(options: GitHubProjectsSkillOptions): str
   return options.projectStatusFieldName ?? "Status";
 }
 
+function requireProjectNumber(options: GitHubProjectsSkillOptions): number {
+  if (options.projectNumber <= 0) {
+    throw new Error("A valid project number is required.");
+  }
+
+  return options.projectNumber;
+}
+
 function findField(fields: ProjectField[], fieldName: string): ProjectField | undefined {
   return fields.find((field) => normalize(field.name) === normalize(fieldName));
 }
@@ -136,26 +144,76 @@ export function createGitHubProjectsSkill(
   const fetchImpl = dependencies?.fetch ?? fetch;
 
   return {
-    async setupProject(): Promise<void> {
-      await github.ensureProjectField(options, {
+    async setupProject(): Promise<{ projectNumber: number; createdFromTemplate: boolean }> {
+      let resolvedOptions = { ...options };
+      let createdFromTemplate = false;
+
+      try {
+        if (resolvedOptions.projectNumber > 0) {
+          await github.getProjectMetadata({
+            owner: resolvedOptions.owner,
+            projectNumber: resolvedOptions.projectNumber,
+          });
+        } else {
+          throw new Error("Project number is not set.");
+        }
+      } catch {
+        if (!resolvedOptions.projectTemplateNumber) {
+          throw new Error(
+            "Project was not found. Set GITHUB_PROJECT_NUMBER to an existing project or provide GITHUB_PROJECT_TEMPLATE_NUMBER.",
+          );
+        }
+
+        const copiedProject = await github.copyProject({
+          sourceOwner: resolvedOptions.projectTemplateOwner ?? resolvedOptions.owner,
+          targetOwner: resolvedOptions.owner,
+          projectNumber: resolvedOptions.projectTemplateNumber,
+          title: resolvedOptions.projectTitle ?? `${resolvedOptions.repo} project`,
+          drafts: true,
+        });
+
+        resolvedOptions = {
+          ...resolvedOptions,
+          projectNumber: copiedProject.number,
+        };
+        createdFromTemplate = true;
+
+        await github.linkProject(
+          {
+            owner: resolvedOptions.owner,
+            projectNumber: copiedProject.number,
+          },
+          {
+            owner: resolvedOptions.owner,
+            repo: resolvedOptions.repo,
+          },
+        );
+      }
+
+      await github.ensureProjectField(resolvedOptions, {
         name: defaultProjectDateFieldName(options),
         dataType: "DATE",
       });
-      await github.ensureProjectField(options, {
+      await github.ensureProjectField(resolvedOptions, {
         name: defaultProjectStatusFieldName(options),
         dataType: "SINGLE_SELECT",
         options: ["Todo", "In Progress", "Blocked", "Done"],
       });
-      await github.ensureProjectField(options, {
+      await github.ensureProjectField(resolvedOptions, {
         name: "Priority",
         dataType: "SINGLE_SELECT",
         options: ["P0", "P1", "P2", "P3"],
       });
-      await github.ensureProjectField(options, {
+      await github.ensureProjectField(resolvedOptions, {
         name: "Type",
         dataType: "SINGLE_SELECT",
         options: ["Feature", "Bug", "Chore", "Docs"],
       });
+
+      return {
+        projectNumber: requireProjectNumber(resolvedOptions),
+        createdFromTemplate,
+      };
     },
 
     async captureIssueFromText(
